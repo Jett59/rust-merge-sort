@@ -1,3 +1,7 @@
+#![feature(test)]
+
+extern crate test;
+
 fn merge<T: Ord + Clone>(array1: &[T], array2: &[T], result: &mut [T]) {
     assert!(array1.len() + array2.len() == result.len());
     let mut result_index = 0;
@@ -26,21 +30,24 @@ fn merge<T: Ord + Clone>(array1: &[T], array2: &[T], result: &mut [T]) {
     }
 }
 
-fn merge_sort<T: Ord + Default + Clone>(array: &mut [T]) {
+pub fn merge_sort_impl<T: Ord + Default + Clone>(array: &mut [T], temp_array: &mut [T]) {
     if array.len() < 2 {
         return;
     }
     let middle = array.len() / 2;
-    merge_sort(&mut array[..middle]);
-    merge_sort(&mut array[middle..]);
-    let mut temp_array = Vec::with_capacity(array.len());
-    temp_array.resize(array.len(), Default::default());
+    merge_sort_impl(&mut array[..middle], temp_array);
+    merge_sort_impl(&mut array[middle..], temp_array);
     merge(
         &array[..middle],
         &array[middle..],
-        temp_array.as_mut_slice(),
+        &mut temp_array[..array.len()],
     );
-    array.clone_from_slice(temp_array.as_slice());
+    array.clone_from_slice(&mut temp_array[..array.len()]);
+}
+
+fn merge_sort<T: Ord + Default + Clone>(array: &mut [T]) {
+    let mut temp_array = vec![T::default(); array.len()];
+    merge_sort_impl(array, temp_array.as_mut_slice());
 }
 
 fn main() {
@@ -75,5 +82,41 @@ fn main() {
         1,
     ];
     merge_sort(&mut array);
-    println!("{:?}", array);
+    println!("{array:?}");
+}
+
+pub struct SimpleRandom(u32);
+
+impl SimpleRandom {
+    pub fn next(&mut self, max: u32) -> u32 {
+        let mut result = self.0;
+        result ^= result << 13;
+        result ^= result >> 17;
+        result ^= result << 5;
+        self.0 = result;
+        result % max
+    }
+}
+
+#[cfg(test)]
+mod mergesort_test {
+    use super::*;
+
+    // Import bencher.
+    use test::Bencher;
+
+    #[bench]
+    fn test_performance(bencher: &mut Bencher) {
+        let mut random = SimpleRandom(17);
+        let element_count = random.next(2000000);
+        println!("Using {element_count} elements");
+        let mut array = Vec::with_capacity(element_count as usize);
+        for _i in 0..element_count {
+            array.push(random.next(1000000));
+        }
+        bencher.iter(|| {
+            let mut array = array.clone();
+            crate::merge_sort(&mut array);
+        });
+    }
 }
