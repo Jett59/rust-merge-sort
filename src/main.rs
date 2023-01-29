@@ -3,7 +3,7 @@
 extern crate test;
 
 fn merge<T: Ord + Clone>(array1: &[T], array2: &[T], result: &mut [T]) {
-    assert!(array1.len() + array2.len() == result.len());
+    debug_assert!(array1.len() + array2.len() == result.len());
     let mut result_index = 0;
     let mut array1_index = 0;
     let mut array2_index = 0;
@@ -34,6 +34,12 @@ pub fn merge_sort_impl<T: Ord + Default + Clone>(array: &mut [T], temp_array: &m
     if array.len() < 2 {
         return;
     }
+    if array.len() == 2 {
+        if array[0] > array[1] {
+            array.swap(0, 1);
+        }
+        return;
+    }
     let middle = array.len() / 2;
     merge_sort_impl(&mut array[..middle], temp_array);
     merge_sort_impl(&mut array[middle..], temp_array);
@@ -42,7 +48,7 @@ pub fn merge_sort_impl<T: Ord + Default + Clone>(array: &mut [T], temp_array: &m
         &array[middle..],
         &mut temp_array[..array.len()],
     );
-    array.clone_from_slice(&mut temp_array[..array.len()]);
+    array.clone_from_slice(&temp_array[..array.len()]);
 }
 
 fn merge_sort<T: Ord + Default + Clone>(array: &mut [T]) {
@@ -102,21 +108,96 @@ impl SimpleRandom {
 mod mergesort_test {
     use super::*;
 
-    // Import bencher.
     use test::Bencher;
 
     #[bench]
-    fn test_performance(bencher: &mut Bencher) {
+    fn many_elements(bencher: &mut Bencher) {
         let mut random = SimpleRandom(17);
-        let element_count = random.next(2000000);
-        println!("Using {element_count} elements");
+        let element_count = 1000000;
         let mut array = Vec::with_capacity(element_count as usize);
         for _i in 0..element_count {
             array.push(random.next(1000000));
         }
         bencher.iter(|| {
             let mut array = array.clone();
-            crate::merge_sort(&mut array);
+            merge_sort(&mut array);
+        });
+    }
+
+    #[bench]
+    fn some_elements(bencher: &mut Bencher) {
+        let mut random = SimpleRandom(31);
+        let element_count = 50000;
+        let mut array = Vec::with_capacity(element_count as usize);
+        for _i in 0..element_count {
+            array.push(random.next(1000000));
+        }
+        bencher.iter(|| {
+            let mut array = array.clone();
+            merge_sort(&mut array);
+        });
+    }
+
+    #[bench]
+    fn few_elements(bencher: &mut Bencher) {
+        let mut random = SimpleRandom(127);
+        let element_count = 500;
+        let mut array = Vec::with_capacity(element_count as usize);
+        for _i in 0..element_count {
+            array.push(random.next(1000000));
+        }
+        bencher.iter(|| {
+            let mut array = array.clone();
+            merge_sort(&mut array);
+        });
+    }
+}
+
+#[cfg(test)]
+mod builtin_sort {
+    use super::*;
+
+    use test::Bencher;
+
+    #[bench]
+    fn many_elements(bencher: &mut Bencher) {
+        let mut random = SimpleRandom(17);
+        let element_count = 1000000;
+        let mut array = Vec::with_capacity(element_count as usize);
+        for _i in 0..element_count {
+            array.push(random.next(1000000));
+        }
+        bencher.iter(|| {
+            let mut array = array.clone();
+            array.sort();
+        });
+    }
+
+    #[bench]
+    fn some_elements(bencher: &mut Bencher) {
+        let mut random = SimpleRandom(31);
+        let element_count = 50000;
+        let mut array = Vec::with_capacity(element_count as usize);
+        for _i in 0..element_count {
+            array.push(random.next(1000000));
+        }
+        bencher.iter(|| {
+            let mut array = array.clone();
+            array.sort();
+        });
+    }
+
+    #[bench]
+    fn few_elements(bencher: &mut Bencher) {
+        let mut random = SimpleRandom(127);
+        let element_count = 500;
+        let mut array = Vec::with_capacity(element_count as usize);
+        for _i in 0..element_count {
+            array.push(random.next(1000000));
+        }
+        bencher.iter(|| {
+            let mut array = array.clone();
+            array.sort();
         });
     }
 }
